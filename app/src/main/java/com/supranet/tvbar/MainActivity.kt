@@ -1,12 +1,14 @@
 package com.supranet.tvbar
 
-import android.content.ContentValues.TAG
+import android.content.pm.PackageManager
 import android.hardware.usb.UsbDevice
 import android.os.Bundle
 import android.util.Log
 import android.view.Surface
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.serenegiant.usb.CameraDialog
 import com.serenegiant.usb.USBMonitor
 import com.serenegiant.usbcameracommon.UVCCameraHandler
@@ -16,6 +18,7 @@ class MainActivity : AppCompatActivity(), CameraDialog.CameraDialogParent {
     private lateinit var mUSBMonitor: USBMonitor
     private lateinit var mCameraHandler: UVCCameraHandler
     private lateinit var mUVCCameraView: CameraViewInterface
+    private val USB_PERMISSION = "com.supranet.tvbar.USB_PERMISSION"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,6 +28,12 @@ class MainActivity : AppCompatActivity(), CameraDialog.CameraDialogParent {
         mUVCCameraView = findViewById(R.id.camera_view)
         mUVCCameraView.aspectRatio = (PREVIEW_WIDTH / PREVIEW_HEIGHT.toFloat()).toDouble()
         mCameraHandler = UVCCameraHandler.createHandler(this, mUVCCameraView, 1, PREVIEW_WIDTH, PREVIEW_HEIGHT, PREVIEW_MODE)
+
+        // Verificar y solicitar permiso
+        if (ContextCompat.checkSelfPermission(this, USB_PERMISSION)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(USB_PERMISSION), REQUEST_USB_PERMISSION)
+        }
     }
 
     override fun onStart() {
@@ -48,6 +57,7 @@ class MainActivity : AppCompatActivity(), CameraDialog.CameraDialogParent {
     private val mOnDeviceConnectListener = object : USBMonitor.OnDeviceConnectListener {
         override fun onAttach(device: UsbDevice) {
             Toast.makeText(this@MainActivity, "Dispositivo USB Conectado", Toast.LENGTH_SHORT).show()
+            mUSBMonitor.requestPermission(device)
         }
 
         override fun onConnect(device: UsbDevice, ctrlBlock: USBMonitor.UsbControlBlock, createNew: Boolean) {
@@ -71,7 +81,6 @@ class MainActivity : AppCompatActivity(), CameraDialog.CameraDialogParent {
         mCameraHandler.startPreview(Surface(st))
     }
 
-
     override fun getUSBMonitor(): USBMonitor {
         return mUSBMonitor
     }
@@ -81,9 +90,10 @@ class MainActivity : AppCompatActivity(), CameraDialog.CameraDialogParent {
     }
 
     companion object {
-        private const val PREVIEW_WIDTH = 640
-        private const val PREVIEW_HEIGHT = 480
+        private const val PREVIEW_WIDTH = 1280
+        private const val PREVIEW_HEIGHT = 720
         private const val PREVIEW_MODE = 1
+        private const val TAG = "MainActivity"
+        private const val REQUEST_USB_PERMISSION = 1
     }
-
 }
