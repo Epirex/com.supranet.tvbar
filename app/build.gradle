@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'com.supranet.tvbar'
+    namespace 'com.supranet.udmi'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.supranet.tvbar"
+        applicationId "com.supranet.udmi"
         minSdk 24
         targetSdk 34
         versionCode 1

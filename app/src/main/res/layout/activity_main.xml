@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#ff000000"
-    tools:context="com.supranet.tvbar.MainActivity"
+    tools:context="com.supranet.udmi.MainActivity"
     tools:ignore="MergeRootFrame">
 
     <com.serenegiant.widget.UVCCameraTextureView

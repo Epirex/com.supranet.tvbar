@@ -1,4 +1,4 @@
-package com.supranet.tvbar
+package com.supranet.udmi
 
 import android.content.pm.PackageManager
 import android.hardware.usb.UsbDevice

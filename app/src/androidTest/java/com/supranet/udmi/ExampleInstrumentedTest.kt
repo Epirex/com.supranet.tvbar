@@ -1,4 +1,4 @@
-package com.supranet.tvbar
+package com.supranet.udmi
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

@@ -1,4 +1,4 @@
-package com.supranet.tvbar
+package com.supranet.udmi
 
 import org.junit.Test
 
