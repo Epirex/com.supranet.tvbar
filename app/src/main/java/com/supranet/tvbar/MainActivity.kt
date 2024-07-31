@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Surface
 import android.view.View
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -33,6 +34,9 @@ class MainActivity : AppCompatActivity(), CameraDialog.CameraDialogParent {
                 or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN)
 
         setContentView(R.layout.activity_main)
+
+        // Keep the screen always on
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         mUSBMonitor = USBMonitor(this, mOnDeviceConnectListener)
         mUVCCameraView = findViewById(R.id.camera_view)
