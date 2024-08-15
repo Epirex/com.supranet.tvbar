@@ -1,16 +1,18 @@
 package com.supranet.udmi
 
-import android.content.pm.PackageManager
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbManager
+import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.Surface
 import android.view.View
 import android.view.WindowManager
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.serenegiant.usb.CameraDialog
 import com.serenegiant.usb.USBMonitor
 import com.serenegiant.usbcameracommon.UVCCameraHandler
@@ -20,7 +22,6 @@ class MainActivity : AppCompatActivity(), CameraDialog.CameraDialogParent {
     private lateinit var mUSBMonitor: USBMonitor
     private lateinit var mCameraHandler: UVCCameraHandler
     private lateinit var mUVCCameraView: CameraViewInterface
-    private val USB_PERMISSION = "com.supranet.tvbar.USB_PERMISSION"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +36,13 @@ class MainActivity : AppCompatActivity(), CameraDialog.CameraDialogParent {
 
         setContentView(R.layout.activity_main)
 
+        val filter = IntentFilter(USB_PERMISSION)
+
+        // Check SDK version
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            registerReceiver(usbReceiver, filter, RECEIVER_NOT_EXPORTED)
+        }
+
         // Keep the screen always on
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
@@ -43,10 +51,17 @@ class MainActivity : AppCompatActivity(), CameraDialog.CameraDialogParent {
         mUVCCameraView.aspectRatio = (PREVIEW_WIDTH / PREVIEW_HEIGHT.toFloat()).toDouble()
         mCameraHandler = UVCCameraHandler.createHandler(this, mUVCCameraView, 1, PREVIEW_WIDTH, PREVIEW_HEIGHT, PREVIEW_MODE)
 
-        // Verificar y solicitar permiso
-        if (ContextCompat.checkSelfPermission(this, USB_PERMISSION)
-            != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(USB_PERMISSION), REQUEST_USB_PERMISSION)
+        val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
+        val deviceList = usbManager.deviceList
+
+        // Check if device list is not empty
+        if (deviceList.isNotEmpty()) {
+            for (device in deviceList.values) {
+                if (!usbManager.hasPermission(device)) {
+                    val intent = PendingIntent.getBroadcast(this, 0, Intent(USB_PERMISSION), PendingIntent.FLAG_IMMUTABLE)
+                    usbManager.requestPermission(device, intent)
+                }
+            }
         }
     }
 
@@ -65,18 +80,21 @@ class MainActivity : AppCompatActivity(), CameraDialog.CameraDialogParent {
     override fun onDestroy() {
         mCameraHandler.release()
         mUSBMonitor.destroy()
+        unregisterReceiver(usbReceiver)
         super.onDestroy()
     }
 
     private val mOnDeviceConnectListener = object : USBMonitor.OnDeviceConnectListener {
         override fun onAttach(device: UsbDevice) {
-            Toast.makeText(this@MainActivity, "Dispositivo USB Conectado", Toast.LENGTH_SHORT).show()
             mUSBMonitor.requestPermission(device)
         }
 
         override fun onConnect(device: UsbDevice, ctrlBlock: USBMonitor.UsbControlBlock, createNew: Boolean) {
-            mCameraHandler.open(ctrlBlock)
-            startPreview()
+            try {
+                mCameraHandler.open(ctrlBlock)
+                startPreview()
+            } catch (e: Exception) {
+            }
         }
 
         override fun onDisconnect(device: UsbDevice, ctrlBlock: USBMonitor.UsbControlBlock) {
@@ -84,7 +102,6 @@ class MainActivity : AppCompatActivity(), CameraDialog.CameraDialogParent {
         }
 
         override fun onDettach(device: UsbDevice) {
-            Toast.makeText(this@MainActivity, "Dispositivo USB Desconectado", Toast.LENGTH_SHORT).show()
         }
 
         override fun onCancel(device: UsbDevice) {}
@@ -95,19 +112,36 @@ class MainActivity : AppCompatActivity(), CameraDialog.CameraDialogParent {
         mCameraHandler.startPreview(Surface(st))
     }
 
+    private val usbReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (USB_PERMISSION == intent?.action) {
+                synchronized(this) {
+                    val device = intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
+                    if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
+                        device?.let {
+                            val ctrlBlock = mUSBMonitor.openDevice(device)
+                            ctrlBlock?.let {
+                                mCameraHandler.open(it)
+                                startPreview()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     override fun getUSBMonitor(): USBMonitor {
         return mUSBMonitor
     }
 
     override fun onDialogResult(canceled: Boolean) {
-        Log.v(TAG, "onDialogResult:canceled=$canceled")
     }
 
     companion object {
         private const val PREVIEW_WIDTH = 1280
         private const val PREVIEW_HEIGHT = 720
         private const val PREVIEW_MODE = 1
-        private const val TAG = "MainActivity"
-        private const val REQUEST_USB_PERMISSION = 1
+        private const val USB_PERMISSION = "com.supranet.udmi.USB_PERMISSION"
     }
 }
